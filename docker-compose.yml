@@ -1,0 +1,37 @@
+services:
+  postgis:
+    image: postgis/postgis:latest
+    container_name: postgis_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: geodatabase
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgis_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  data_importer:
+    image: ghcr.io/osgeo/gdal:ubuntu-small-latest
+    container_name: data_importer
+    depends_on:
+      postgis:
+        condition: service_healthy
+    environment:
+      PGHOST: postgis
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: geodatabase
+    volumes:
+      - ./data/raw:/data:ro
+      - ./scripts:/scripts
+    command: ["/bin/bash", "/scripts/import.sh"]
+
+volumes:
+  postgis_data:
